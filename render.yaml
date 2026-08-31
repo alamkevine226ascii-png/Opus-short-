@@ -1,0 +1,58 @@
+# Render Blueprint — OpenShorts
+# Déploie le backend FastAPI + le bot Telegram avec un disque persistant.
+# Import: https://render.com → New → Blueprint → sélectionner ce repo.
+
+services:
+  # ── Backend FastAPI (pipeline vidéo) ──────────────────────────────────────
+  - type: web
+    name: openshorts-api
+    runtime: docker
+    repo: https://github.com/alamkevine226ascii-png/Opus-short-
+    plan: standard          # 4 GB RAM — Whisper tiny + ffmpeg (CPU)
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health/ready
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false          # → saisi dans le dashboard Render
+      - key: VDA_API_KEY
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: WHISPER_MODEL
+        value: tiny          # rapide sur CPU
+      - key: WHISPER_DEVICE
+        value: cpu
+      - key: WHISPER_COMPUTE
+        value: int8
+      - key: FFMPEG_ENCODER
+        value: x264
+      - key: MAX_CONCURRENT_JOBS
+        value: "1"           # 1 job à la fois (4 GB RAM)
+      - key: UPLOAD_DIR
+        value: /data/uploads
+      - key: OUTPUT_DIR
+        value: /data/output
+      - key: DEBUG_LOGS
+        value: "true"
+    disk:
+      name: openshorts-data
+      mountPath: /data
+      sizeGB: 10
+
+  # ── Bot Telegram (polling) ────────────────────────────────────────────────
+  - type: worker
+    name: openshorts-bot
+    runtime: docker
+    repo: https://github.com/alamkevine226ascii-png/Opus-short-
+    plan: starter           # 512 MB suffisent pour le bot
+    dockerfilePath: ./Dockerfile
+    startCommand: python bot_telegram.py
+    envVars:
+      - key: OPENSHORTS_API_URL
+        value: https://openshorts-api.onrender.com
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: VDA_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
